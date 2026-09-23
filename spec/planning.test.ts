@@ -177,5 +177,27 @@ describe("planning: stage then drag-place a course", () => {
     expect(
       [...placedDoc.querySelectorAll(".staged-course")].some((li) => (li.textContent ?? "").includes("CODE1010")),
     ).toBe(false);
+
+    // The placed card must itself be draggable (this is what lets it be
+    // dragged back out to staging), and the place endpoint must accept a
+    // blank year/session as "send it back to staged" — the drag-out drop
+    // handler on the staging tray posts exactly that.
+    const placedCard = [...placedDoc.querySelectorAll("td.plan-cell li.course-card")].find((li) =>
+      (li.textContent ?? "").includes("CODE1010"),
+    );
+    expect(placedCard?.getAttribute("draggable")).toBe("true");
+    expect(placedCard?.getAttribute("data-row-id")).toBe(rowId);
+
+    const unplaceRes = await post(`/api/plans/${planId}/courses/${rowId}/place`, new URLSearchParams());
+    expect(unplaceRes.status).toBe(200);
+
+    const unplacedPage = await fetch(new URL(`/plans/${planId}`, baseUrl));
+    const unplacedDoc = new JSDOM(await unplacedPage.text()).window.document;
+    expect(
+      [...unplacedDoc.querySelectorAll("td.plan-cell")].some((td) => (td.textContent ?? "").includes("CODE1010")),
+    ).toBe(false);
+    expect(
+      [...unplacedDoc.querySelectorAll(".staged-course")].some((li) => (li.textContent ?? "").includes("CODE1010")),
+    ).toBe(true);
   });
 });

@@ -170,8 +170,14 @@ export function addCourseToPlan(values: {
   return db.insert(planCourses).values(values).returning().get();
 }
 
-/** Moves a staged (or already-placed) row into a year/session slot. */
-export function placeCourseInPlan(id: number, values: { year: number; session: Session }): void {
+/**
+ * Moves a row to a year/session slot, or back to staged when both are null —
+ * one shared code path for "place" and "unplace".
+ */
+export function placeCourseInPlan(
+  id: number,
+  values: { year: number | null; session: Session | null },
+): void {
   db.update(planCourses).set(values).where(eq(planCourses.id, id)).run();
 }
 

@@ -25,17 +25,26 @@ const recommended = RECOMMENDED_COURSE_LOAD[session];
         {cellCourses.map((row) => {
           const warnings = warningsByRow.get(row.id) ?? [];
           return (
-            <li class="course-card">
+            <li
+              class="course-card"
+              draggable="true"
+              data-row-id={row.id}
+              data-offered-sessions={(row.course.offeredSessions ?? []).join(",")}
+            >
               <div class="cell-course-row">
-                <span>
+                <span class="course-name">
+                  <span class="drag-handle" aria-hidden="true">
+                    ⠿
+                  </span>
                   {row.course.code} — {row.course.title}
                 </span>
                 <form method="post" action={`/api/plans/${planId}/courses/${row.id}`}>
                   <button
                     type="submit"
+                    class="remove-btn"
                     aria-label={`Remove ${row.course.code} from Year ${year}, ${SESSION_LABELS[session]}`}
                   >
-                    Remove
+                    ×
                   </button>
                 </form>
               </div>

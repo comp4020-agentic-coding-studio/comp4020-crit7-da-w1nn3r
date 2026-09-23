@@ -264,9 +264,21 @@ td {
   background: #fff;
   padding: 0.5rem 0.6rem;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  cursor: grab;
   transition:
     border-color 0.15s ease,
-    box-shadow 0.15s ease;
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+.course-card:hover {
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.course-card:active {
+  cursor: grabbing;
+  transform: translateY(0);
 }
 
 .cell-course-row {
@@ -274,6 +286,19 @@ td {
   justify-content: space-between;
   align-items: center;
   gap: 0.5rem;
+}
+
+.course-name {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.drag-handle {
+  color: #b8b0a0;
+  font-size: 1rem;
+  line-height: 1;
+  user-select: none;
 }
 
 .cell-courses form,
@@ -293,15 +318,23 @@ td {
   color: #8a8478;
 }
 
-button[aria-label^="Remove"] {
+.remove-btn {
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  line-height: 1;
+  font-size: 1rem;
   color: #92400e;
   background: #fff;
   border-color: #e8e2d6;
-  padding: 0.25rem 0.6rem;
-  font-size: 0.85rem;
+  border-radius: 50%;
 }
 
-button[aria-label^="Remove"]:hover {
+.remove-btn:hover {
   color: #fff;
   background: #92400e;
   border-color: #92400e;
@@ -355,15 +388,10 @@ button[aria-label^="Remove"]:hover {
   max-width: 20rem;
   border-color: var(--anu-gold);
   background: var(--anu-gold-tint);
-  cursor: grab;
 }
 
 .staged-course:hover {
   box-shadow: 0 3px 8px rgba(190, 131, 14, 0.25);
-}
-
-.staged-course:active {
-  cursor: grabbing;
 }
 
 .place-form {
@@ -380,6 +408,17 @@ button[aria-label^="Remove"]:hover {
 }
 
 td.plan-cell.drag-over {
+  outline: 2px dashed var(--anu-gold);
+  outline-offset: -2px;
+  background: var(--anu-gold-tint);
+}
+
+td.plan-cell.session-unavailable {
+  opacity: 0.4;
+  filter: grayscale(70%);
+}
+
+.staging-tray.drag-over {
   outline: 2px dashed var(--anu-gold);
   outline-offset: -2px;
   background: var(--anu-gold-tint);

@@ -98,7 +98,10 @@ const errorMessage =
 
       <section class="staging-tray">
         <h2>Stage a course</h2>
-        <p class="drag-hint">Pick a course, then drag its card onto the year/session you want it in.</p>
+        <p class="drag-hint">
+          Pick a course, then drag its card onto the year/session you want it in — or drag a card back here to
+          unstage it.
+        </p>
         {
           addableCourses.length > 0 && (
             <form method="post" action={`/api/plans/${plan.id}/courses`} class="add-course">
@@ -118,14 +121,22 @@ const errorMessage =
           stagedCourses.length > 0 && (
             <ul class="staged-courses">
               {stagedCourses.map((row) => (
-                <li class="staged-course course-card" draggable="true" data-row-id={row.id}>
+                <li
+                  class="staged-course course-card"
+                  draggable="true"
+                  data-row-id={row.id}
+                  data-offered-sessions={(row.course.offeredSessions ?? []).join(",")}
+                >
                   <div class="cell-course-row">
-                    <span>
+                    <span class="course-name">
+                      <span class="drag-handle" aria-hidden="true">
+                        ⠿
+                      </span>
                       {row.course.code} — {row.course.title}
                     </span>
                     <form method="post" action={`/api/plans/${plan.id}/courses/${row.id}`}>
-                      <button type="submit" aria-label={`Remove ${row.course.code} from staging`}>
-                        Remove
+                      <button type="submit" class="remove-btn" aria-label={`Remove ${row.course.code} from staging`}>
+                        ×
                       </button>
                     </form>
                   </div>
@@ -232,22 +243,48 @@ const errorMessage =
     <script>
       const main = document.querySelector<HTMLElement>(".plan-main");
       const planId = main?.dataset.planId;
+      const cells = document.querySelectorAll<HTMLElement>("td.plan-cell");
+      const stagingTray = document.querySelector<HTMLElement>(".staging-tray");
 
       function placeUrl(rowId: string) {
         return `/api/plans/${planId}/courses/${rowId}/place`;
       }
 
-      for (const card of document.querySelectorAll<HTMLElement>(".staged-course")) {
-        card.addEventListener("dragstart", (event) => {
-          const rowId = card.dataset.rowId;
-          if (rowId && event.dataTransfer) {
-            event.dataTransfer.setData("text/plain", rowId);
-            event.dataTransfer.effectAllowed = "move";
-          }
-        });
+      async function movePlacement(rowId: string, body: URLSearchParams) {
+        try {
+          const result = await fetch(placeUrl(rowId), { method: "POST", body });
+          location.href = result.url;
+        } catch {
+          location.reload();
+        }
       }
 
-      for (const cell of document.querySelectorAll<HTMLElement>("td.plan-cell")) {
+      function clearUnavailableSessions() {
+        for (const cell of cells) {
+          cell.classList.remove("session-unavailable");
+        }
+      }
+
+      for (const card of document.querySelectorAll<HTMLElement>(".course-card[draggable='true']")) {
+        card.addEventListener("dragstart", (event) => {
+          const rowId = card.dataset.rowId;
+          if (!rowId || !event.dataTransfer) return;
+          event.dataTransfer.setData("text/plain", rowId);
+          event.dataTransfer.effectAllowed = "move";
+
+          // Empty/absent means the course runs every session — nothing to gray out.
+          const offered = (card.dataset.offeredSessions ?? "").split(",").filter(Boolean);
+          if (offered.length === 0) return;
+          for (const cell of cells) {
+            if (!offered.includes(cell.dataset.session ?? "")) {
+              cell.classList.add("session-unavailable");
+            }
+          }
+        });
+        card.addEventListener("dragend", clearUnavailableSessions);
+      }
+
+      for (const cell of cells) {
         cell.addEventListener("dragover", (event) => {
           event.preventDefault();
           cell.classList.add("drag-over");
@@ -255,20 +292,30 @@ const errorMessage =
         cell.addEventListener("dragleave", () => {
           cell.classList.remove("drag-over");
         });
-        cell.addEventListener("drop", async (event) => {
+        cell.addEventListener("drop", (event) => {
           event.preventDefault();
           cell.classList.remove("drag-over");
           const rowId = event.dataTransfer?.getData("text/plain");
           const { year, session } = cell.dataset;
           if (!rowId || !year || !session || !planId) return;
+          void movePlacement(rowId, new URLSearchParams({ year, session }));
+        });
+      }
 
-          try {
-            const body = new URLSearchParams({ year, session });
-            const result = await fetch(placeUrl(rowId), { method: "POST", body });
-            location.href = result.url;
-          } catch {
-            location.reload();
-          }
+      if (stagingTray) {
+        stagingTray.addEventListener("dragover", (event) => {
+          event.preventDefault();
+          stagingTray.classList.add("drag-over");
+        });
+        stagingTray.addEventListener("dragleave", () => {
+          stagingTray.classList.remove("drag-over");
+        });
+        stagingTray.addEventListener("drop", (event) => {
+          event.preventDefault();
+          stagingTray.classList.remove("drag-over");
+          const rowId = event.dataTransfer?.getData("text/plain");
+          if (!rowId || !planId) return;
+          void movePlacement(rowId, new URLSearchParams());
         });
       }
     </script>
