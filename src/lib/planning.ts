@@ -8,6 +8,19 @@ import {
 } from "./queries";
 import { SESSION_ORDER, type Course, type Plan, type Session } from "./schema";
 
+// ANU runs primarily on Semester 1 and 2 — a typical full-time load there is
+// 4 courses, versus 1 in the smaller sessions (Summer/Autumn/Winter/Spring
+// don't all run every course). Purely a guide shown in the UI: nothing here
+// is enforced, same as every other check in this file.
+export const RECOMMENDED_COURSE_LOAD: Record<Session, number> = {
+  summer: 1,
+  s1: 4,
+  autumn: 1,
+  winter: 1,
+  s2: 4,
+  spring: 1,
+};
+
 export type MissingCompulsory =
   | { kind: "required"; courseId: number }
   | { kind: "elective_pool"; poolLabel: string; poolMinCount: number; plannedCount: number; courseIds: number[] };

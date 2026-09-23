@@ -12,7 +12,7 @@ body {
   font-family: system-ui, sans-serif;
   line-height: 1.6;
   color: var(--anu-black);
-  background: #fff;
+  background: #f7f5f1;
 }
 
 nav[aria-label="site"] {
@@ -136,6 +136,19 @@ form.stack label {
   border: 1px solid var(--anu-gold-tint);
   border-radius: 0.375rem;
   padding: 0.75rem 1rem;
+  background: #fff;
+  transition: border-color 0.15s ease;
+}
+
+.plan-list li:hover {
+  border-color: var(--anu-gold);
+}
+
+main:not(.plan-main) {
+  background: #fff;
+  border: 1px solid #e8e2d6;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 main.plan-main {
@@ -150,19 +163,34 @@ main.plan-main {
   max-width: 40rem;
 }
 
+.load-note {
+  display: inline-block;
+  font-size: 0.9rem;
+  color: var(--anu-black);
+  background: var(--anu-gold-tint);
+  border-radius: 0.375rem;
+  padding: 0.35rem 0.75rem;
+}
+
 .grid-scroll {
   overflow-x: auto;
+  margin-bottom: 1.5rem;
 }
 
 table {
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   width: 100%;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  border: 1px solid #e8e2d6;
+  background: #fff;
 }
 
 th,
 td {
-  border: 1px solid #ddd;
-  padding: 0.5rem;
+  border-bottom: 1px solid #e8e2d6;
+  padding: 0.6rem 0.75rem;
   vertical-align: top;
   text-align: left;
 }
@@ -170,14 +198,55 @@ td {
 thead th {
   background: var(--anu-gold-tint);
   color: var(--anu-black);
+  border-bottom: 2px solid var(--anu-gold);
 }
 
 tbody th {
-  background: #fafafa;
+  background: #fafaf8;
+}
+
+tbody tr:hover td {
+  background: #fdfbf6;
 }
 
 td {
   min-width: 12rem;
+}
+
+.other-sessions {
+  border: 1px solid #e8e2d6;
+  border-radius: 0.5rem;
+  background: #fff;
+  padding: 0.75rem 1rem 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.other-sessions summary {
+  cursor: pointer;
+  font-weight: 600;
+  list-style: none;
+  padding: 0.25rem 0;
+}
+
+.other-sessions summary::-webkit-details-marker {
+  display: none;
+}
+
+.other-sessions summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 0.5rem;
+  color: var(--anu-gold);
+  transition: transform 0.15s ease;
+}
+
+.other-sessions[open] summary::before {
+  transform: rotate(90deg);
+}
+
+.other-sessions .grid-scroll {
+  margin-top: 0.75rem;
+  margin-bottom: 0;
 }
 
 .cell-courses {
@@ -205,6 +274,31 @@ td {
   flex-direction: column;
   align-items: stretch;
   gap: 0.25rem;
+}
+
+.add-course.has-divider {
+  padding-top: 0.5rem;
+  border-top: 1px dashed #e8e2d6;
+}
+
+.load-hint {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  color: #8a8478;
+}
+
+button[aria-label^="Remove"] {
+  color: #92400e;
+  background: #fff;
+  border-color: #e8e2d6;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.85rem;
+}
+
+button[aria-label^="Remove"]:hover {
+  color: #fff;
+  background: #92400e;
+  border-color: #92400e;
 }
 
 .warnings {

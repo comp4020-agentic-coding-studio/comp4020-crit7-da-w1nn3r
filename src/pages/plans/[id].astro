@@ -1,8 +1,14 @@
 ---
-import { courseWarnings, describeWarning, missingCompulsory } from "../../lib/planning";
+import PlanCell from "../../components/PlanCell.astro";
+import { courseWarnings, missingCompulsory } from "../../lib/planning";
 import { getPlanDetail, listCourses, listPlanCourses } from "../../lib/queries";
-import { SESSION_LABELS, SESSION_ORDER } from "../../lib/schema";
+import { SESSION_LABELS, type Session } from "../../lib/schema";
 import "../../styles.css";
+
+// ANU runs primarily on Semester 1 and 2 — everything else gets a smaller,
+// collapsed table below rather than six equally-wide columns.
+const PRIMARY_SESSIONS: Session[] = ["s1", "s2"];
+const SECONDARY_SESSIONS: Session[] = ["summer", "autumn", "winter", "spring"];
 
 const id = Number(Astro.params.id);
 const plan = Number.isInteger(id) ? getPlanDetail(id) : undefined;
@@ -53,6 +59,10 @@ const errorMessage =
         {`${plan.degree.title} (${plan.degree.code}) — enrolled ${plan.enrollmentYear}`}
         {plan.specialisation ? ` — ${plan.specialisation.title} (${plan.specialisation.kind})` : ""}
       </p>
+      <p class="load-note">
+        Recommended full-time load: 4 courses in Semester 1 and Semester 2, 1 in other sessions — a guide, not a
+        requirement.
+      </p>
 
       {errorMessage && (
         <p role="alert" class="notice">
@@ -88,7 +98,7 @@ const errorMessage =
           <thead>
             <tr>
               <th scope="col">Year</th>
-              {SESSION_ORDER.map((session) => (
+              {PRIMARY_SESSIONS.map((session) => (
                 <th scope="col">{SESSION_LABELS[session]}</th>
               ))}
             </tr>
@@ -97,70 +107,56 @@ const errorMessage =
             {years.map((year) => (
               <tr>
                 <th scope="row">Year {year}</th>
-                {SESSION_ORDER.map((session) => {
-                  const cellCourses = plannedCourses.filter(
-                    (row) => row.year === year && row.session === session,
-                  );
-                  return (
-                    <td>
-                      {cellCourses.length > 0 && (
-                        <ul class="cell-courses">
-                          {cellCourses.map((row) => {
-                            const warnings = warningsByRow.get(row.id) ?? [];
-                            return (
-                              <li>
-                                <div class="cell-course-row">
-                                  <span>
-                                    {row.course.code} — {row.course.title}
-                                  </span>
-                                  <form method="post" action={`/api/plans/${plan.id}/courses/${row.id}`}>
-                                    <button
-                                      type="submit"
-                                      aria-label={`Remove ${row.course.code} from Year ${year}, ${SESSION_LABELS[session]}`}
-                                    >
-                                      Remove
-                                    </button>
-                                  </form>
-                                </div>
-                                {warnings.length > 0 && (
-                                  <ul class="warnings">
-                                    {warnings.map((warning) => (
-                                      <li class="warning">{describeWarning(warning, courseById)}</li>
-                                    ))}
-                                  </ul>
-                                )}
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      )}
-                      {addableCourses.length > 0 && (
-                        <form method="post" action={`/api/plans/${plan.id}/courses`} class="add-course">
-                          <input type="hidden" name="year" value={year} />
-                          <input type="hidden" name="session" value={session} />
-                          <select
-                            name="courseId"
-                            required
-                            aria-label={`Add a course to Year ${year}, ${SESSION_LABELS[session]}`}
-                          >
-                            <option value="">Add a course…</option>
-                            {addableCourses.map((course) => (
-                              <option value={course.id}>
-                                {course.code} — {course.title}
-                              </option>
-                            ))}
-                          </select>
-                          <button type="submit">Add</button>
-                        </form>
-                      )}
-                    </td>
-                  );
-                })}
+                {PRIMARY_SESSIONS.map((session) => (
+                  <PlanCell
+                    planId={plan.id}
+                    year={year}
+                    session={session}
+                    plannedCourses={plannedCourses}
+                    warningsByRow={warningsByRow}
+                    courseById={courseById}
+                    addableCourses={addableCourses}
+                  />
+                ))}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
+
+      <details class="other-sessions" open={plannedCourses.some((row) => SECONDARY_SESSIONS.includes(row.session))}>
+        <summary>Other sessions — Summer, Autumn, Winter, Spring</summary>
+        <div class="grid-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Year</th>
+                {SECONDARY_SESSIONS.map((session) => (
+                  <th scope="col">{SESSION_LABELS[session]}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {years.map((year) => (
+                <tr>
+                  <th scope="row">Year {year}</th>
+                  {SECONDARY_SESSIONS.map((session) => (
+                    <PlanCell
+                      planId={plan.id}
+                      year={year}
+                      session={session}
+                      plannedCourses={plannedCourses}
+                      warningsByRow={warningsByRow}
+                      courseById={courseById}
+                      addableCourses={addableCourses}
+                    />
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
     </main>
   </body>
 </html>
