@@ -118,7 +118,7 @@ const errorMessage =
           stagedCourses.length > 0 && (
             <ul class="staged-courses">
               {stagedCourses.map((row) => (
-                <li class="staged-course" draggable="true" data-row-id={row.id}>
+                <li class="staged-course course-card" draggable="true" data-row-id={row.id}>
                   <div class="cell-course-row">
                     <span>
                       {row.course.code} — {row.course.title}

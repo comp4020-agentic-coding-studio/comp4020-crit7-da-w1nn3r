@@ -25,7 +25,7 @@ const recommended = RECOMMENDED_COURSE_LOAD[session];
         {cellCourses.map((row) => {
           const warnings = warningsByRow.get(row.id) ?? [];
           return (
-            <li>
+            <li class="course-card">
               <div class="cell-course-row">
                 <span>
                   {row.course.code} — {row.course.title}
