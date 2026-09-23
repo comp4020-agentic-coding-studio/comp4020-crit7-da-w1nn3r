@@ -1,0 +1,53 @@
+---
+import { listCourses } from "../../../lib/queries";
+import "../../../styles.css";
+
+const allCourses = listCourses();
+---
+
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Courses — Admin</title>
+  </head>
+  <body>
+    <nav aria-label="site">
+      <a href="/">Degree planner</a>
+      <a href="/admin">Admin</a>
+    </nav>
+    <main class="plan-main">
+      <h1>Courses</h1>
+      <p><a href="/admin/courses/new">New course</a></p>
+      <div class="grid-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Code</th>
+              <th scope="col">Title</th>
+              <th scope="col">CP</th>
+              <th scope="col">Sessions</th>
+              <th scope="col">Permission?</th>
+              <th scope="col">Retired?</th>
+              <th scope="col"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {allCourses.map((course) => (
+              <tr>
+                <td>{course.code}</td>
+                <td>{course.title}</td>
+                <td>{course.creditPoints}</td>
+                <td>{course.sessionsRequired}</td>
+                <td>{course.permissionRequired ? "Yes" : "No"}</td>
+                <td>{course.retired ? "Yes" : "No"}</td>
+                <td><a href={`/admin/courses/${course.id}`}>Edit</a></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </main>
+  </body>
+</html>

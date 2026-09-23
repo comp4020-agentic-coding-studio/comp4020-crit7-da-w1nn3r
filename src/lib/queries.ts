@@ -226,3 +226,36 @@ export function getPrerequisiteGroups(courseId: number): PrerequisiteGroupDetail
       .map((row) => row.courseId),
   }));
 }
+
+// --- Admin: catalog CRUD -----------------------------------------------
+
+export type CourseInput = {
+  code: string;
+  title: string;
+  creditPoints: number;
+  sessionsRequired: number;
+  permissionRequired: boolean;
+  retired: boolean;
+  supersededByCourseId: number | null;
+};
+
+export function createCourse(values: CourseInput): Course {
+  return db.insert(courses).values(values).returning().get();
+}
+
+export function updateCourse(id: number, values: CourseInput): Course | undefined {
+  return db.update(courses).set(values).where(eq(courses.id, id)).returning().get();
+}
+
+/** Adds one CNF group ("this OR that") to a course's prerequisites. */
+export function addPrerequisiteGroup(courseId: number, optionCourseIds: number[]): void {
+  const group = db.insert(prerequisiteGroups).values({ courseId }).returning().get();
+  for (const prerequisiteCourseId of optionCourseIds) {
+    db.insert(prerequisiteGroupOptions).values({ groupId: group.id, prerequisiteCourseId }).run();
+  }
+}
+
+export function removePrerequisiteGroup(groupId: number): void {
+  db.delete(prerequisiteGroupOptions).where(eq(prerequisiteGroupOptions.groupId, groupId)).run();
+  db.delete(prerequisiteGroups).where(eq(prerequisiteGroups.id, groupId)).run();
+}

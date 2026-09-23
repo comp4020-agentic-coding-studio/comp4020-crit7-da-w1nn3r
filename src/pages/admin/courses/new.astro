@@ -1,0 +1,70 @@
+---
+import { listCourses } from "../../../lib/queries";
+import "../../../styles.css";
+
+const allCourses = listCourses();
+const error = Astro.url.searchParams.get("error");
+const errorMessage = error === "invalid" ? "Check the fields — code and title are required." : null;
+---
+
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>New course — Admin</title>
+  </head>
+  <body>
+    <nav aria-label="site">
+      <a href="/">Degree planner</a>
+      <a href="/admin">Admin</a>
+      <a href="/admin/courses">Courses</a>
+    </nav>
+    <main>
+      <h1>New course</h1>
+      {errorMessage && (
+        <p role="alert" class="notice">
+          {errorMessage}
+        </p>
+      )}
+      <form method="post" action="/api/admin/courses" class="stack">
+        <label>
+          Code
+          <input type="text" name="code" required placeholder="CODE1000" />
+        </label>
+        <label>
+          Title
+          <input type="text" name="title" required />
+        </label>
+        <label>
+          Credit points
+          <input type="number" name="creditPoints" value="6" min="1" required />
+        </label>
+        <label>
+          Sessions required (2+ triggers the multi-session warning)
+          <input type="number" name="sessionsRequired" value="1" min="1" required />
+        </label>
+        <label>
+          <input type="checkbox" name="permissionRequired" value="1" />
+          Requires a permission code
+        </label>
+        <label>
+          <input type="checkbox" name="retired" value="1" />
+          Retired
+        </label>
+        <label>
+          Superseded by (if retired)
+          <select name="supersededByCourseId">
+            <option value="">— none —</option>
+            {allCourses.map((course) => (
+              <option value={course.id}>
+                {course.code} — {course.title}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button type="submit">Create course</button>
+      </form>
+    </main>
+  </body>
+</html>

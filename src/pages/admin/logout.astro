@@ -1,0 +1,9 @@
+---
+import { ADMIN_COOKIE_NAME } from "../../lib/adminAuth";
+
+if (Astro.request.method !== "POST") {
+  return Astro.redirect("/admin", 302);
+}
+Astro.cookies.delete(ADMIN_COOKIE_NAME, { path: "/" });
+return Astro.redirect("/admin/login", 302);
+---

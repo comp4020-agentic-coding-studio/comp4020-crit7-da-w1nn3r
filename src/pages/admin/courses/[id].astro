@@ -1,0 +1,118 @@
+---
+import { getCourse, getPrerequisiteGroups, listCourses } from "../../../lib/queries";
+import "../../../styles.css";
+
+const id = Number(Astro.params.id);
+const course = Number.isInteger(id) ? getCourse(id) : undefined;
+if (!course) {
+  return Astro.redirect("/admin/courses", 302);
+}
+
+const allCourses = listCourses().filter((c) => c.id !== course.id);
+const courseById = new Map(listCourses().map((c) => [c.id, c]));
+const groups = getPrerequisiteGroups(course.id);
+
+const error = Astro.url.searchParams.get("error");
+const errorMessage =
+  error === "invalid"
+    ? "Check the fields — code and title are required."
+    : error === "empty-group"
+      ? "Pick at least one option course for the new group."
+      : null;
+---
+
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{course.code} — Admin</title>
+  </head>
+  <body>
+    <nav aria-label="site">
+      <a href="/">Degree planner</a>
+      <a href="/admin">Admin</a>
+      <a href="/admin/courses">Courses</a>
+    </nav>
+    <main>
+      <h1>Edit {course.code}</h1>
+      {errorMessage && (
+        <p role="alert" class="notice">
+          {errorMessage}
+        </p>
+      )}
+      <form method="post" action={`/api/admin/courses/${course.id}`} class="stack">
+        <label>
+          Code
+          <input type="text" name="code" required value={course.code} />
+        </label>
+        <label>
+          Title
+          <input type="text" name="title" required value={course.title} />
+        </label>
+        <label>
+          Credit points
+          <input type="number" name="creditPoints" value={course.creditPoints} min="1" required />
+        </label>
+        <label>
+          Sessions required (2+ triggers the multi-session warning)
+          <input type="number" name="sessionsRequired" value={course.sessionsRequired} min="1" required />
+        </label>
+        <label>
+          <input type="checkbox" name="permissionRequired" value="1" checked={course.permissionRequired} />
+          Requires a permission code
+        </label>
+        <label>
+          <input type="checkbox" name="retired" value="1" checked={course.retired} />
+          Retired
+        </label>
+        <label>
+          Superseded by (if retired)
+          <select name="supersededByCourseId">
+            <option value="">— none —</option>
+            {allCourses.map((c) => (
+              <option value={c.id} selected={c.id === course.supersededByCourseId}>
+                {c.code} — {c.title}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button type="submit">Save changes</button>
+      </form>
+
+      <h2>Prerequisites</h2>
+      <p>
+        Each group below is an "OR" of options; a student must have planned at least one option from
+        <em>every</em> group, strictly earlier — never enforced, only warned about.
+      </p>
+      {groups.length === 0 && <p>No prerequisites set.</p>}
+      <ul class="plan-list">
+        {groups.map((group) => (
+          <li>
+            <div class="cell-course-row">
+              <span>{group.options.map((courseId) => courseById.get(courseId)?.code ?? `#${courseId}`).join(" or ")}</span>
+              <form method="post" action={`/api/admin/courses/${course.id}/prerequisite-groups/${group.id}`}>
+                <button type="submit" aria-label={`Remove prerequisite group ${group.id}`}>Remove</button>
+              </form>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <h3>Add a prerequisite group</h3>
+      <form method="post" action={`/api/admin/courses/${course.id}/prerequisite-groups`} class="stack">
+        <label>
+          Option courses (select more than one for "A or B"; select one for a plain requirement)
+          <select name="options" multiple required size={Math.min(8, Math.max(3, allCourses.length))}>
+            {allCourses.map((c) => (
+              <option value={c.id}>
+                {c.code} — {c.title}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button type="submit">Add group</button>
+      </form>
+    </main>
+  </body>
+</html>

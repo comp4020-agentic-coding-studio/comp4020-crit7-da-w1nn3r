@@ -1,0 +1,55 @@
+---
+import { ADMIN_COOKIE_NAME, checkPassword, expectedCookieValue, isAuthenticated } from "../../lib/adminAuth";
+import "../../styles.css";
+
+if (isAuthenticated(Astro.cookies.get(ADMIN_COOKIE_NAME)?.value)) {
+  return Astro.redirect("/admin", 302);
+}
+
+let error: string | null = null;
+if (Astro.request.method === "POST") {
+  const form = await Astro.request.formData();
+  const password = String(form.get("password") ?? "");
+  if (checkPassword(password)) {
+    Astro.cookies.set(ADMIN_COOKIE_NAME, expectedCookieValue(), {
+      path: "/",
+      httpOnly: true,
+      sameSite: "lax",
+      secure: import.meta.env.PROD,
+    });
+    return Astro.redirect("/admin", 302);
+  }
+  error = "Incorrect password.";
+}
+---
+
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin login — Degree planner</title>
+  </head>
+  <body>
+    <nav aria-label="site">
+      <a href="/">Degree planner</a>
+      <a href="/readme/">About</a>
+    </nav>
+    <main>
+      <h1>Admin login</h1>
+      <p>Manage the course and degree catalog.</p>
+      {error && (
+        <p role="alert" class="notice">
+          {error}
+        </p>
+      )}
+      <form method="post" class="stack">
+        <label>
+          Password
+          <input type="password" name="password" required autofocus />
+        </label>
+        <button type="submit">Log in</button>
+      </form>
+    </main>
+  </body>
+</html>

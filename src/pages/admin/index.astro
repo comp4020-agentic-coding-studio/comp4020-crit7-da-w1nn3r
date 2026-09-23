@@ -1,0 +1,27 @@
+---
+import "../../styles.css";
+---
+
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Admin — Degree planner</title>
+  </head>
+  <body>
+    <nav aria-label="site">
+      <a href="/">Degree planner</a>
+      <a href="/readme/">About</a>
+    </nav>
+    <main>
+      <h1>Admin</h1>
+      <ul class="plan-list">
+        <li><a href="/admin/courses">Courses</a> — add, edit, retire, and manage prerequisites.</li>
+      </ul>
+      <form method="post" action="/admin/logout">
+        <button type="submit">Log out</button>
+      </form>
+    </main>
+  </body>
+</html>
