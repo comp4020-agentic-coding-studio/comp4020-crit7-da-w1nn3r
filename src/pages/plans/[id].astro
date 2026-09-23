@@ -2,7 +2,7 @@
 import PlanCell from "../../components/PlanCell.astro";
 import { courseWarnings, describeWarning, missingCompulsory } from "../../lib/planning";
 import { getPlanDetail, listCourses, listPlanCourses } from "../../lib/queries";
-import { SESSION_LABELS, SESSION_ORDER, type Session } from "../../lib/schema";
+import { SESSION_LABELS, type Session } from "../../lib/schema";
 import "../../styles.css";
 
 // ANU runs primarily on Semester 1 and 2 — everything else gets a smaller,
@@ -98,10 +98,7 @@ const errorMessage =
 
       <section class="staging-tray">
         <h2>Stage a course</h2>
-        <p class="drag-hint">
-          Pick a course, then drag its card onto the year/session you want it in — or drag a card back here to
-          unstage it.
-        </p>
+        <p class="drag-hint">Pick a course, then drag its card onto the year/session you want it in — or drag a card back here to unstage it.</p>
         {
           addableCourses.length > 0 && (
             <form method="post" action={`/api/plans/${plan.id}/courses`} class="add-course">
@@ -147,25 +144,6 @@ const errorMessage =
                       ))}
                     </ul>
                   )}
-                  <form class="place-form" method="post" action={`/api/plans/${plan.id}/courses/${row.id}/place`}>
-                    <label>
-                      Year
-                      <select name="year" required aria-label={`Year to place ${row.course.code} in`}>
-                        {years.map((year) => (
-                          <option value={year}>{year}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
-                      Session
-                      <select name="session" required aria-label={`Session to place ${row.course.code} in`}>
-                        {SESSION_ORDER.map((session) => (
-                          <option value={session}>{SESSION_LABELS[session]}</option>
-                        ))}
-                      </select>
-                    </label>
-                    <button type="submit">Place</button>
-                  </form>
                 </li>
               ))}
             </ul>
