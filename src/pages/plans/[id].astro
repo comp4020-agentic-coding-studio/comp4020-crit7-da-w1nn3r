@@ -1,7 +1,8 @@
 ---
-import "../../styles.css";
+import { courseWarnings, describeWarning, missingCompulsory } from "../../lib/planning";
 import { getPlanDetail, listCourses, listPlanCourses } from "../../lib/queries";
 import { SESSION_LABELS, SESSION_ORDER } from "../../lib/schema";
+import "../../styles.css";
 
 const id = Number(Astro.params.id);
 const plan = Number.isInteger(id) ? getPlanDetail(id) : undefined;
@@ -11,9 +12,13 @@ if (!plan) {
 }
 
 const plannedCourses = listPlanCourses(plan.id);
-const addableCourses = listCourses().filter(
+const allCourses = listCourses();
+const courseById = new Map(allCourses.map((course) => [course.id, course]));
+const addableCourses = allCourses.filter(
   (course) => !course.retired && !plannedCourses.some((row) => row.courseId === course.id),
 );
+const missing = missingCompulsory(plan, plannedCourses);
+const warningsByRow = new Map(plannedCourses.map((row) => [row.id, courseWarnings(row, plannedCourses)]));
 
 // Always show at least 3 years, and one more than the furthest-planned year
 // so there's always room to add the next one — no separate "add a year" step.
@@ -55,6 +60,29 @@ const errorMessage =
         </p>
       )}
 
+      {missing.length > 0 && (
+        <div class="notice" role="status">
+          <p>Add these before your plan meets its requirements (nothing here is enforced — it's a checklist):</p>
+          <ul>
+            {missing.map((item) =>
+              item.kind === "required" ? (
+                <li>
+                  {courseById.get(item.courseId)?.code} — {courseById.get(item.courseId)?.title}
+                </li>
+              ) : (
+                <li>
+                  {item.poolLabel}: {item.plannedCount} of {item.poolMinCount} selected — choose from{" "}
+                  {item.courseIds
+                    .map((courseId) => courseById.get(courseId)?.code)
+                    .filter(Boolean)
+                    .join(", ")}
+                </li>
+              ),
+            )}
+          </ul>
+        </div>
+      )}
+
       <div class="grid-scroll">
         <table>
           <thead>
@@ -77,24 +105,33 @@ const errorMessage =
                     <td>
                       {cellCourses.length > 0 && (
                         <ul class="cell-courses">
-                          {cellCourses.map((row) => (
-                            <li>
-                              <span>
-                                {row.course.code} — {row.course.title}
-                              </span>
-                              <form
-                                method="post"
-                                action={`/api/plans/${plan.id}/courses/${row.id}`}
-                              >
-                                <button
-                                  type="submit"
-                                  aria-label={`Remove ${row.course.code} from Year ${year}, ${SESSION_LABELS[session]}`}
-                                >
-                                  Remove
-                                </button>
-                              </form>
-                            </li>
-                          ))}
+                          {cellCourses.map((row) => {
+                            const warnings = warningsByRow.get(row.id) ?? [];
+                            return (
+                              <li>
+                                <div class="cell-course-row">
+                                  <span>
+                                    {row.course.code} — {row.course.title}
+                                  </span>
+                                  <form method="post" action={`/api/plans/${plan.id}/courses/${row.id}`}>
+                                    <button
+                                      type="submit"
+                                      aria-label={`Remove ${row.course.code} from Year ${year}, ${SESSION_LABELS[session]}`}
+                                    >
+                                      Remove
+                                    </button>
+                                  </form>
+                                </div>
+                                {warnings.length > 0 && (
+                                  <ul class="warnings">
+                                    {warnings.map((warning) => (
+                                      <li class="warning">{describeWarning(warning, courseById)}</li>
+                                    ))}
+                                  </ul>
+                                )}
+                              </li>
+                            );
+                          })}
                         </ul>
                       )}
                       {addableCourses.length > 0 && (

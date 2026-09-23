@@ -1,4 +1,4 @@
-import { asc, desc, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 import { db } from "./db";
 import {
   type Course,
@@ -8,10 +8,17 @@ import {
   type Session,
   type Specialisation,
   courses,
+  degreeRequirementItems,
+  degreeRequirementPoolCourses,
   degreeRequirementSets,
   degrees,
   planCourses,
   plans,
+  prerequisiteGroupOptions,
+  prerequisiteGroups,
+  specialisationRequirementItems,
+  specialisationRequirementPoolCourses,
+  specialisationRequirementSets,
   specialisations,
 } from "./schema";
 
@@ -135,4 +142,87 @@ export function addCourseToPlan(values: {
 
 export function removeCourseFromPlan(id: number): void {
   db.delete(planCourses).where(eq(planCourses.id, id)).run();
+}
+
+export type RequirementItem =
+  | { kind: "required"; courseId: number }
+  | { kind: "elective_pool"; poolLabel: string; poolMinCount: number; courseIds: number[] };
+
+/** The requirement set locked in for a degree at a given enrolment year, if any. */
+export function getDegreeRequirements(degreeId: number, year: number): RequirementItem[] {
+  const set = db
+    .select()
+    .from(degreeRequirementSets)
+    .where(and(eq(degreeRequirementSets.degreeId, degreeId), eq(degreeRequirementSets.year, year)))
+    .get();
+  if (!set) return [];
+
+  const items = db
+    .select()
+    .from(degreeRequirementItems)
+    .where(eq(degreeRequirementItems.requirementSetId, set.id))
+    .all();
+
+  return items.map((item): RequirementItem => {
+    if (item.kind === "required") {
+      return { kind: "required", courseId: item.courseId! };
+    }
+    const courseIds = db
+      .select({ courseId: degreeRequirementPoolCourses.courseId })
+      .from(degreeRequirementPoolCourses)
+      .where(eq(degreeRequirementPoolCourses.requirementItemId, item.id))
+      .all()
+      .map((row) => row.courseId);
+    return { kind: "elective_pool", poolLabel: item.poolLabel!, poolMinCount: item.poolMinCount!, courseIds };
+  });
+}
+
+/** Same shape as getDegreeRequirements, for a specialisation locked in at that year. */
+export function getSpecialisationRequirements(specialisationId: number, year: number): RequirementItem[] {
+  const set = db
+    .select()
+    .from(specialisationRequirementSets)
+    .where(
+      and(
+        eq(specialisationRequirementSets.specialisationId, specialisationId),
+        eq(specialisationRequirementSets.year, year),
+      ),
+    )
+    .get();
+  if (!set) return [];
+
+  const items = db
+    .select()
+    .from(specialisationRequirementItems)
+    .where(eq(specialisationRequirementItems.requirementSetId, set.id))
+    .all();
+
+  return items.map((item): RequirementItem => {
+    if (item.kind === "required") {
+      return { kind: "required", courseId: item.courseId! };
+    }
+    const courseIds = db
+      .select({ courseId: specialisationRequirementPoolCourses.courseId })
+      .from(specialisationRequirementPoolCourses)
+      .where(eq(specialisationRequirementPoolCourses.requirementItemId, item.id))
+      .all()
+      .map((row) => row.courseId);
+    return { kind: "elective_pool", poolLabel: item.poolLabel!, poolMinCount: item.poolMinCount!, courseIds };
+  });
+}
+
+export type PrerequisiteGroupDetail = { id: number; options: number[] };
+
+/** CNF prerequisite groups for a course: every group needs one satisfied option. */
+export function getPrerequisiteGroups(courseId: number): PrerequisiteGroupDetail[] {
+  const groups = db.select().from(prerequisiteGroups).where(eq(prerequisiteGroups.courseId, courseId)).all();
+  return groups.map((group) => ({
+    id: group.id,
+    options: db
+      .select({ courseId: prerequisiteGroupOptions.prerequisiteCourseId })
+      .from(prerequisiteGroupOptions)
+      .where(eq(prerequisiteGroupOptions.groupId, group.id))
+      .all()
+      .map((row) => row.courseId),
+  }));
 }

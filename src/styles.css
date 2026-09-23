@@ -108,7 +108,7 @@ td {
   gap: 0.25rem;
 }
 
-.cell-courses li {
+.cell-course-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -124,4 +124,18 @@ td {
   flex-direction: column;
   align-items: stretch;
   gap: 0.25rem;
+}
+
+.warnings {
+  list-style: none;
+  padding: 0;
+  margin: 0.25rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.warning {
+  font-size: 0.8rem;
+  color: #92400e;
 }
