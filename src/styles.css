@@ -1,18 +1,79 @@
+/* ANU brand: gold is the highlight colour, used sparingly, against black and
+   white — https://www.brandcolorcode.com/australian-national-university */
+:root {
+  --anu-gold: #be830e;
+  --anu-gold-tint: #f5edde;
+  --anu-black: #1a1a1a;
+}
+
 body {
   margin: 0;
-  padding: 2rem;
+  padding: 0;
   font-family: system-ui, sans-serif;
   line-height: 1.6;
-  color: #1a1a1a;
+  color: var(--anu-black);
+  background: #fff;
+}
+
+nav[aria-label="site"] {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 1rem 2rem;
+  background: #000;
+  border-bottom: 4px solid var(--anu-gold);
+}
+
+nav[aria-label="site"] a {
+  color: #fff;
+  text-decoration: none;
+  padding-block: 0.15rem;
+  border-bottom: 2px solid transparent;
+}
+
+nav[aria-label="site"] a:first-child {
+  font-weight: 700;
+  font-size: 1.1rem;
+  letter-spacing: 0.01em;
+  margin-right: 0.5rem;
+}
+
+nav[aria-label="site"] a:hover,
+nav[aria-label="site"] a:focus-visible {
+  color: var(--anu-gold-tint);
+  border-bottom-color: var(--anu-gold);
 }
 
 main {
   max-width: 40rem;
   margin: 0 auto;
+  padding: 2rem 2rem 3rem;
+}
+
+h1 {
+  display: inline-block;
+  margin-top: 0;
+  padding-bottom: 0.3rem;
+  border-bottom: 3px solid var(--anu-gold);
+}
+
+h2 {
+  margin-top: 2rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--anu-gold-tint);
 }
 
 a {
-  color: #0b5fff;
+  color: #7a5300;
+}
+
+a:hover {
+  color: #000;
+}
+
+:focus-visible {
+  outline: 3px solid var(--anu-gold);
+  outline-offset: 2px;
 }
 
 form {
@@ -38,6 +99,17 @@ select {
 button {
   padding: 0.4rem 1rem;
   font: inherit;
+  color: #fff;
+  background: #000;
+  border: 2px solid #000;
+  border-radius: 0.25rem;
+  cursor: pointer;
+}
+
+button:hover {
+  color: #000;
+  background: var(--anu-gold);
+  border-color: var(--anu-gold);
 }
 
 form.stack {
@@ -61,7 +133,7 @@ form.stack label {
 }
 
 .plan-list li {
-  border: 1px solid #ddd;
+  border: 1px solid var(--anu-gold-tint);
   border-radius: 0.375rem;
   padding: 0.75rem 1rem;
 }
@@ -93,6 +165,15 @@ td {
   padding: 0.5rem;
   vertical-align: top;
   text-align: left;
+}
+
+thead th {
+  background: var(--anu-gold-tint);
+  color: var(--anu-black);
+}
+
+tbody th {
+  background: #fafafa;
 }
 
 td {
