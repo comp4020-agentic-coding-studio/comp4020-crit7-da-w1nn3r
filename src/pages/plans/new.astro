@@ -1,0 +1,93 @@
+---
+import "../../styles.css";
+import { getDegree, listDegrees, listRequirementYears, listSpecialisationsForDegree } from "../../lib/queries";
+
+const allDegrees = listDegrees();
+const degreeIdParam = Astro.url.searchParams.get("degree");
+const selectedDegreeId = degreeIdParam ? Number(degreeIdParam) : null;
+const selectedDegree = selectedDegreeId ? getDegree(selectedDegreeId) : undefined;
+const years = selectedDegree ? listRequirementYears(selectedDegree.id) : [];
+const degreeSpecialisations = selectedDegree ? listSpecialisationsForDegree(selectedDegree.id) : [];
+---
+
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>New plan — Degree planner</title>
+  </head>
+  <body>
+    <nav aria-label="site">
+      <a href="/">Degree planner</a>
+      <a href="/readme/">About</a>
+    </nav>
+    <main>
+      <h1>New plan</h1>
+
+      {
+        !selectedDegree && (
+          <form method="get" action="/plans/new" class="stack">
+            <label>
+              Degree
+              <select name="degree" required>
+                <option value="">Choose a degree…</option>
+                {allDegrees.map((degree) => (
+                  <option value={degree.id}>
+                    {degree.title} ({degree.code})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button type="submit">Continue</button>
+          </form>
+        )
+      }
+
+      {
+        selectedDegree && years.length === 0 && (
+          <p>
+            {selectedDegree.title} has no locked-in requirements for any enrolment year yet.{" "}
+            <a href="/plans/new">Choose a different degree</a>.
+          </p>
+        )
+      }
+
+      {
+        selectedDegree && years.length > 0 && (
+          <form method="post" action="/api/plans" class="stack">
+            <input type="hidden" name="degreeId" value={selectedDegree.id} />
+            <p>
+              Degree: <strong>{selectedDegree.title} ({selectedDegree.code})</strong> —{" "}
+              <a href="/plans/new">change</a>
+            </p>
+            <label>
+              Plan name
+              <input type="text" name="label" required placeholder="e.g. My degree plan" />
+            </label>
+            <label>
+              Enrolment year
+              <select name="enrollmentYear" required>
+                {years.map((year) => (
+                  <option value={year}>{year} (requirements locked in at enrolment)</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Specialisation / major / minor (optional)
+              <select name="specialisationId">
+                <option value="">None yet</option>
+                {degreeSpecialisations.map((specialisation) => (
+                  <option value={specialisation.id}>
+                    {specialisation.title} ({specialisation.kind})
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button type="submit">Create plan</button>
+          </form>
+        )
+      }
+    </main>
+  </body>
+</html>

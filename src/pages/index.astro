@@ -1,5 +1,8 @@
 ---
 import "../styles.css";
+import { listPlans } from "../lib/queries";
+
+const plans = listPlans();
 ---
 
 <!doctype html>
@@ -16,7 +19,23 @@ import "../styles.css";
     </nav>
     <main>
       <h1>Degree planner</h1>
-      <p>Under construction — the plan picker lands next.</p>
+      <p><a href="/plans/new">Start a new plan</a></p>
+
+      {
+        plans.length === 0 ? (
+          <p>No plans yet.</p>
+        ) : (
+          <ul class="plan-list">
+            {plans.map((plan) => (
+              <li>
+                <a href={`/plans/${plan.id}`}>{plan.label}</a>
+                {` — ${plan.degreeTitle}, enrolled ${plan.enrollmentYear}`}
+                {plan.specialisationTitle ? ` — ${plan.specialisationTitle}` : ""}
+              </li>
+            ))}
+          </ul>
+        )
+      }
     </main>
   </body>
 </html>

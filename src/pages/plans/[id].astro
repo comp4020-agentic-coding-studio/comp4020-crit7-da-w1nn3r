@@ -1,0 +1,34 @@
+---
+import "../../styles.css";
+import { getPlanDetail } from "../../lib/queries";
+
+const id = Number(Astro.params.id);
+const plan = Number.isInteger(id) ? getPlanDetail(id) : undefined;
+
+if (!plan) {
+  return Astro.redirect("/", 302);
+}
+---
+
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{plan.label} — Degree planner</title>
+  </head>
+  <body>
+    <nav aria-label="site">
+      <a href="/">Degree planner</a>
+      <a href="/readme/">About</a>
+    </nav>
+    <main>
+      <h1>{plan.label}</h1>
+      <p>
+        {`${plan.degree.title} (${plan.degree.code}) — enrolled ${plan.enrollmentYear}`}
+        {plan.specialisation ? ` — ${plan.specialisation.title} (${plan.specialisation.kind})` : ""}
+      </p>
+      <p>The session-by-session planner grid lands next.</p>
+    </main>
+  </body>
+</html>
