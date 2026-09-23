@@ -1,11 +1,16 @@
 import { asc, desc, eq } from "drizzle-orm";
 import { db } from "./db";
 import {
+  type Course,
   type Degree,
   type Plan,
+  type PlanCourse,
+  type Session,
   type Specialisation,
+  courses,
   degreeRequirementSets,
   degrees,
+  planCourses,
   plans,
   specialisations,
 } from "./schema";
@@ -85,4 +90,49 @@ export function getPlanDetail(id: number): PlanDetail | undefined {
   if (!degree) return undefined;
   const specialisation = plan.specialisationId ? (getSpecialisation(plan.specialisationId) ?? null) : null;
   return { ...plan, degree, specialisation };
+}
+
+export function listCourses(): Course[] {
+  return db.select().from(courses).orderBy(asc(courses.code)).all();
+}
+
+export function getCourse(id: number): Course | undefined {
+  return db.select().from(courses).where(eq(courses.id, id)).get();
+}
+
+export type PlanCourseDetail = PlanCourse & { course: Course };
+
+/** Every course placed in a plan, across every year and session. */
+export function listPlanCourses(planId: number): PlanCourseDetail[] {
+  return db
+    .select({
+      id: planCourses.id,
+      planId: planCourses.planId,
+      courseId: planCourses.courseId,
+      year: planCourses.year,
+      session: planCourses.session,
+      createdAt: planCourses.createdAt,
+      course: courses,
+    })
+    .from(planCourses)
+    .innerJoin(courses, eq(planCourses.courseId, courses.id))
+    .where(eq(planCourses.planId, planId))
+    .all();
+}
+
+export function getPlanCourseRow(id: number): PlanCourse | undefined {
+  return db.select().from(planCourses).where(eq(planCourses.id, id)).get();
+}
+
+export function addCourseToPlan(values: {
+  planId: number;
+  courseId: number;
+  year: number;
+  session: Session;
+}): PlanCourse {
+  return db.insert(planCourses).values(values).returning().get();
+}
+
+export function removeCourseFromPlan(id: number): void {
+  db.delete(planCourses).where(eq(planCourses.id, id)).run();
 }

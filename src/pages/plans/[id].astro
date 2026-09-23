@@ -1,6 +1,7 @@
 ---
 import "../../styles.css";
-import { getPlanDetail } from "../../lib/queries";
+import { getPlanDetail, listCourses, listPlanCourses } from "../../lib/queries";
+import { SESSION_LABELS, SESSION_ORDER } from "../../lib/schema";
 
 const id = Number(Astro.params.id);
 const plan = Number.isInteger(id) ? getPlanDetail(id) : undefined;
@@ -8,6 +9,25 @@ const plan = Number.isInteger(id) ? getPlanDetail(id) : undefined;
 if (!plan) {
   return Astro.redirect("/", 302);
 }
+
+const plannedCourses = listPlanCourses(plan.id);
+const addableCourses = listCourses().filter(
+  (course) => !course.retired && !plannedCourses.some((row) => row.courseId === course.id),
+);
+
+// Always show at least 3 years, and one more than the furthest-planned year
+// so there's always room to add the next one — no separate "add a year" step.
+const furthestYear = plannedCourses.reduce((max, row) => Math.max(max, row.year), 0);
+const yearCount = Math.max(3, furthestYear + 1);
+const years = Array.from({ length: yearCount }, (_, i) => i + 1);
+
+const error = Astro.url.searchParams.get("error");
+const errorMessage =
+  error === "duplicate"
+    ? "That course is already in this plan."
+    : error === "invalid"
+      ? "That course, year or session wasn't valid."
+      : null;
 ---
 
 <!doctype html>
@@ -22,13 +42,88 @@ if (!plan) {
       <a href="/">Degree planner</a>
       <a href="/readme/">About</a>
     </nav>
-    <main>
+    <main class="plan-main">
       <h1>{plan.label}</h1>
       <p>
         {`${plan.degree.title} (${plan.degree.code}) — enrolled ${plan.enrollmentYear}`}
         {plan.specialisation ? ` — ${plan.specialisation.title} (${plan.specialisation.kind})` : ""}
       </p>
-      <p>The session-by-session planner grid lands next.</p>
+
+      {errorMessage && (
+        <p role="alert" class="notice">
+          {errorMessage}
+        </p>
+      )}
+
+      <div class="grid-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Year</th>
+              {SESSION_ORDER.map((session) => (
+                <th scope="col">{SESSION_LABELS[session]}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {years.map((year) => (
+              <tr>
+                <th scope="row">Year {year}</th>
+                {SESSION_ORDER.map((session) => {
+                  const cellCourses = plannedCourses.filter(
+                    (row) => row.year === year && row.session === session,
+                  );
+                  return (
+                    <td>
+                      {cellCourses.length > 0 && (
+                        <ul class="cell-courses">
+                          {cellCourses.map((row) => (
+                            <li>
+                              <span>
+                                {row.course.code} — {row.course.title}
+                              </span>
+                              <form
+                                method="post"
+                                action={`/api/plans/${plan.id}/courses/${row.id}`}
+                              >
+                                <button
+                                  type="submit"
+                                  aria-label={`Remove ${row.course.code} from Year ${year}, ${SESSION_LABELS[session]}`}
+                                >
+                                  Remove
+                                </button>
+                              </form>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      {addableCourses.length > 0 && (
+                        <form method="post" action={`/api/plans/${plan.id}/courses`} class="add-course">
+                          <input type="hidden" name="year" value={year} />
+                          <input type="hidden" name="session" value={session} />
+                          <select
+                            name="courseId"
+                            required
+                            aria-label={`Add a course to Year ${year}, ${SESSION_LABELS[session]}`}
+                          >
+                            <option value="">Add a course…</option>
+                            {addableCourses.map((course) => (
+                              <option value={course.id}>
+                                {course.code} — {course.title}
+                              </option>
+                            ))}
+                          </select>
+                          <button type="submit">Add</button>
+                        </form>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </main>
   </body>
 </html>

@@ -11,6 +11,15 @@ import { type AnySQLiteColumn, int, sqliteTable, text, unique } from "drizzle-or
 export const SESSION_ORDER = ["summer", "s1", "autumn", "winter", "s2", "spring"] as const;
 export type Session = (typeof SESSION_ORDER)[number];
 
+export const SESSION_LABELS: Record<Session, string> = {
+  summer: "Summer Session",
+  s1: "Semester 1",
+  autumn: "Autumn Session",
+  winter: "Winter Session",
+  s2: "Semester 2",
+  spring: "Spring Session",
+};
+
 export const SPECIALISATION_KINDS = ["major", "minor", "specialisation"] as const;
 export type SpecialisationKind = (typeof SPECIALISATION_KINDS)[number];
 
