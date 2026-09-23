@@ -1,17 +1,11 @@
 import type { APIRoute } from "astro";
-import { getPlanCourseRow, removeCourseFromPlan } from "../../../../../lib/queries";
-
-/** Returns the row if it exists and belongs to this plan, otherwise null. */
-function findOwnedRow(planId: number, rowId: number) {
-  const row = getPlanCourseRow(rowId);
-  return row && row.planId === planId ? row : null;
-}
+import { getOwnedPlanCourseRow, removeCourseFromPlan } from "../../../../../lib/queries";
 
 // A plain <form> can only POST, so the browser's "remove" button uses this.
 export const POST: APIRoute = async ({ params, redirect }) => {
   const planId = Number(params.id);
   const rowId = Number(params.courseRowId);
-  const row = findOwnedRow(planId, rowId);
+  const row = getOwnedPlanCourseRow(planId, rowId);
   if (!row) return new Response("Not found", { status: 404 });
 
   removeCourseFromPlan(rowId);
@@ -22,7 +16,7 @@ export const POST: APIRoute = async ({ params, redirect }) => {
 export const DELETE: APIRoute = async ({ params }) => {
   const planId = Number(params.id);
   const rowId = Number(params.courseRowId);
-  const row = findOwnedRow(planId, rowId);
+  const row = getOwnedPlanCourseRow(planId, rowId);
   if (!row) return new Response("Not found", { status: 404 });
 
   removeCourseFromPlan(rowId);

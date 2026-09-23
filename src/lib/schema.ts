@@ -195,8 +195,10 @@ export const planCourses = sqliteTable(
     courseId: int("course_id")
       .notNull()
       .references(() => courses.id),
-    year: int().notNull(),
-    session: text().notNull().$type<Session>(),
+    // Null on both = staged: added to the plan but not yet dragged into a
+    // year/session slot.
+    year: int(),
+    session: text().$type<Session>(),
     createdAt: text("created_at")
       .notNull()
       .default(sql`(datetime('now'))`),

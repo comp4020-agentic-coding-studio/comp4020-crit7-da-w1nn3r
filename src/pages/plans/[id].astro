@@ -1,8 +1,8 @@
 ---
 import PlanCell from "../../components/PlanCell.astro";
-import { courseWarnings, missingCompulsory } from "../../lib/planning";
+import { courseWarnings, describeWarning, missingCompulsory } from "../../lib/planning";
 import { getPlanDetail, listCourses, listPlanCourses } from "../../lib/queries";
-import { SESSION_LABELS, type Session } from "../../lib/schema";
+import { SESSION_LABELS, SESSION_ORDER, type Session } from "../../lib/schema";
 import "../../styles.css";
 
 // ANU runs primarily on Semester 1 and 2 — everything else gets a smaller,
@@ -26,9 +26,12 @@ const addableCourses = allCourses.filter(
 const missing = missingCompulsory(plan, plannedCourses);
 const warningsByRow = new Map(plannedCourses.map((row) => [row.id, courseWarnings(row, plannedCourses)]));
 
+// Staged: added to the plan but not yet dragged into a year/session slot.
+const stagedCourses = plannedCourses.filter((row) => row.session == null);
+
 // Always show at least 3 years, and one more than the furthest-planned year
 // so there's always room to add the next one — no separate "add a year" step.
-const furthestYear = plannedCourses.reduce((max, row) => Math.max(max, row.year), 0);
+const furthestYear = plannedCourses.reduce((max, row) => Math.max(max, row.year ?? 0), 0);
 const yearCount = Math.max(3, furthestYear + 1);
 const years = Array.from({ length: yearCount }, (_, i) => i + 1);
 
@@ -53,7 +56,7 @@ const errorMessage =
       <a href="/">Degree planner</a>
       <a href="/readme/">About</a>
     </nav>
-    <main class="plan-main">
+    <main class="plan-main" data-plan-id={plan.id}>
       <h1>{plan.label}</h1>
       <p>
         {`${plan.degree.title} (${plan.degree.code}) — enrolled ${plan.enrollmentYear}`}
@@ -93,6 +96,72 @@ const errorMessage =
         </div>
       )}
 
+      <section class="staging-tray">
+        <h2>Stage a course</h2>
+        <p class="drag-hint">Pick a course, then drag its card onto the year/session you want it in.</p>
+        {
+          addableCourses.length > 0 && (
+            <form method="post" action={`/api/plans/${plan.id}/courses`} class="add-course">
+              <select name="courseId" required aria-label="Stage a course">
+                <option value="">Choose a course…</option>
+                {addableCourses.map((course) => (
+                  <option value={course.id}>
+                    {course.code} — {course.title}
+                  </option>
+                ))}
+              </select>
+              <button type="submit">Stage</button>
+            </form>
+          )
+        }
+        {
+          stagedCourses.length > 0 && (
+            <ul class="staged-courses">
+              {stagedCourses.map((row) => (
+                <li class="staged-course" draggable="true" data-row-id={row.id}>
+                  <div class="cell-course-row">
+                    <span>
+                      {row.course.code} — {row.course.title}
+                    </span>
+                    <form method="post" action={`/api/plans/${plan.id}/courses/${row.id}`}>
+                      <button type="submit" aria-label={`Remove ${row.course.code} from staging`}>
+                        Remove
+                      </button>
+                    </form>
+                  </div>
+                  {(warningsByRow.get(row.id) ?? []).length > 0 && (
+                    <ul class="warnings">
+                      {(warningsByRow.get(row.id) ?? []).map((warning) => (
+                        <li class="warning">{describeWarning(warning, courseById)}</li>
+                      ))}
+                    </ul>
+                  )}
+                  <form class="place-form" method="post" action={`/api/plans/${plan.id}/courses/${row.id}/place`}>
+                    <label>
+                      Year
+                      <select name="year" required aria-label={`Year to place ${row.course.code} in`}>
+                        {years.map((year) => (
+                          <option value={year}>{year}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Session
+                      <select name="session" required aria-label={`Session to place ${row.course.code} in`}>
+                        {SESSION_ORDER.map((session) => (
+                          <option value={session}>{SESSION_LABELS[session]}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <button type="submit">Place</button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          )
+        }
+      </section>
+
       <div class="grid-scroll">
         <table>
           <thead>
@@ -115,7 +184,6 @@ const errorMessage =
                     plannedCourses={plannedCourses}
                     warningsByRow={warningsByRow}
                     courseById={courseById}
-                    addableCourses={addableCourses}
                   />
                 ))}
               </tr>
@@ -124,7 +192,10 @@ const errorMessage =
         </table>
       </div>
 
-      <details class="other-sessions" open={plannedCourses.some((row) => SECONDARY_SESSIONS.includes(row.session))}>
+      <details
+        class="other-sessions"
+        open={plannedCourses.some((row) => row.session != null && SECONDARY_SESSIONS.includes(row.session))}
+      >
         <summary>Other sessions — Summer, Autumn, Winter, Spring</summary>
         <div class="grid-scroll">
           <table>
@@ -148,7 +219,6 @@ const errorMessage =
                       plannedCourses={plannedCourses}
                       warningsByRow={warningsByRow}
                       courseById={courseById}
-                      addableCourses={addableCourses}
                     />
                   ))}
                 </tr>
@@ -158,5 +228,49 @@ const errorMessage =
         </div>
       </details>
     </main>
+
+    <script>
+      const main = document.querySelector<HTMLElement>(".plan-main");
+      const planId = main?.dataset.planId;
+
+      function placeUrl(rowId: string) {
+        return `/api/plans/${planId}/courses/${rowId}/place`;
+      }
+
+      for (const card of document.querySelectorAll<HTMLElement>(".staged-course")) {
+        card.addEventListener("dragstart", (event) => {
+          const rowId = card.dataset.rowId;
+          if (rowId && event.dataTransfer) {
+            event.dataTransfer.setData("text/plain", rowId);
+            event.dataTransfer.effectAllowed = "move";
+          }
+        });
+      }
+
+      for (const cell of document.querySelectorAll<HTMLElement>("td.plan-cell")) {
+        cell.addEventListener("dragover", (event) => {
+          event.preventDefault();
+          cell.classList.add("drag-over");
+        });
+        cell.addEventListener("dragleave", () => {
+          cell.classList.remove("drag-over");
+        });
+        cell.addEventListener("drop", async (event) => {
+          event.preventDefault();
+          cell.classList.remove("drag-over");
+          const rowId = event.dataTransfer?.getData("text/plain");
+          const { year, session } = cell.dataset;
+          if (!rowId || !year || !session || !planId) return;
+
+          try {
+            const body = new URLSearchParams({ year, session });
+            const result = await fetch(placeUrl(rowId), { method: "POST", body });
+            location.href = result.url;
+          } catch {
+            location.reload();
+          }
+        });
+      }
+    </script>
   </body>
 </html>

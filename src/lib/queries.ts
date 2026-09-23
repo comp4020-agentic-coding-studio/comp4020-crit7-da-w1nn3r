@@ -152,13 +152,27 @@ export function getPlanCourseRow(id: number): PlanCourse | undefined {
   return db.select().from(planCourses).where(eq(planCourses.id, id)).get();
 }
 
+/** The row if it exists and belongs to this plan, otherwise undefined. */
+export function getOwnedPlanCourseRow(planId: number, id: number): PlanCourse | undefined {
+  return db
+    .select()
+    .from(planCourses)
+    .where(and(eq(planCourses.id, id), eq(planCourses.planId, planId)))
+    .get();
+}
+
 export function addCourseToPlan(values: {
   planId: number;
   courseId: number;
-  year: number;
-  session: Session;
+  year: number | null;
+  session: Session | null;
 }): PlanCourse {
   return db.insert(planCourses).values(values).returning().get();
+}
+
+/** Moves a staged (or already-placed) row into a year/session slot. */
+export function placeCourseInPlan(id: number, values: { year: number; session: Session }): void {
+  db.update(planCourses).set(values).where(eq(planCourses.id, id)).run();
 }
 
 export function removeCourseFromPlan(id: number): void {

@@ -116,3 +116,66 @@ describe("planning: persistence and prerequisite warnings", () => {
     expect(textOf(await after.text())).not.toContain("Prerequisite not planned earlier yet");
   });
 });
+
+describe("planning: stage then drag-place a course", () => {
+  let planId: number;
+
+  beforeAll(async () => {
+    const newPlanForm = await fetch(new URL("/plans/new", baseUrl));
+    const newPlanDoc = new JSDOM(await newPlanForm.text()).window.document;
+    const degreeId = [...newPlanDoc.querySelectorAll('select[name="degree"] option')]
+      .map((o) => o.getAttribute("value"))
+      .find((value) => value);
+
+    const withYearRes = await fetch(new URL(`/plans/new?degree=${degreeId}`, baseUrl));
+    const withYearDoc = new JSDOM(await withYearRes.text()).window.document;
+    const year = withYearDoc.querySelector('select[name="enrollmentYear"] option')?.getAttribute("value");
+
+    const createRes = await post(
+      "/api/plans",
+      new URLSearchParams({ label: "Stage spec test plan", degreeId: degreeId!, enrollmentYear: year! }),
+    );
+    const match = createRes.url.match(/\/plans\/(\d+)$/);
+    expect(match, `expected a redirect to /plans/<id>, got ${createRes.url}`).toBeTruthy();
+    planId = Number(match![1]);
+  });
+
+  it("stages a course without placing it, then places it via the place endpoint", async () => {
+    const planPage = await fetch(new URL(`/plans/${planId}`, baseUrl));
+    const planDoc = new JSDOM(await planPage.text()).window.document;
+    const courseId = optionValue(planDoc, "CODE1010");
+
+    // Staging posts only courseId — no year/session — which should insert it
+    // unplaced rather than 400ing.
+    const stageRes = await post(`/api/plans/${planId}/courses`, new URLSearchParams({ courseId }));
+    expect(stageRes.status).toBe(200);
+
+    const stagedPage = await fetch(new URL(`/plans/${planId}`, baseUrl));
+    const stagedDoc = new JSDOM(await stagedPage.text()).window.document;
+    const stagedCard = [...stagedDoc.querySelectorAll(".staged-course")].find((li) =>
+      (li.textContent ?? "").includes("CODE1010"),
+    );
+    expect(stagedCard, "staged course should render as a .staged-course card").toBeTruthy();
+    expect(
+      [...stagedDoc.querySelectorAll("td.plan-cell")].some((td) => (td.textContent ?? "").includes("CODE1010")),
+    ).toBe(false);
+
+    const rowId = stagedCard!.getAttribute("data-row-id");
+    expect(rowId).toBeTruthy();
+
+    const placeRes = await post(
+      `/api/plans/${planId}/courses/${rowId}/place`,
+      new URLSearchParams({ year: "1", session: "s1" }),
+    );
+    expect(placeRes.status).toBe(200);
+
+    const placedPage = await fetch(new URL(`/plans/${planId}`, baseUrl));
+    const placedDoc = new JSDOM(await placedPage.text()).window.document;
+    expect(
+      [...placedDoc.querySelectorAll("td.plan-cell")].some((td) => (td.textContent ?? "").includes("CODE1010")),
+    ).toBe(true);
+    expect(
+      [...placedDoc.querySelectorAll(".staged-course")].some((li) => (li.textContent ?? "").includes("CODE1010")),
+    ).toBe(false);
+  });
+});

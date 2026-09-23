@@ -64,10 +64,15 @@ function sessionRank(year: number, session: Session): number {
 export function unmetPrerequisites(planCourse: PlanCourseDetail, plannedCourses: PlanCourseDetail[]): number[][] {
   const groups = getPrerequisiteGroups(planCourse.courseId);
   if (groups.length === 0) return [];
+  // Staged (not yet dragged into a session) — no ordering context to check yet.
+  if (planCourse.year == null || planCourse.session == null) return [];
 
   const thisRank = sessionRank(planCourse.year, planCourse.session);
   const earlierCourseIds = new Set(
-    plannedCourses.filter((row) => sessionRank(row.year, row.session) < thisRank).map((row) => row.courseId),
+    plannedCourses
+      .filter((row): row is PlanCourseDetail & { year: number; session: Session } => row.year != null && row.session != null)
+      .filter((row) => sessionRank(row.year, row.session) < thisRank)
+      .map((row) => row.courseId),
   );
 
   return groups

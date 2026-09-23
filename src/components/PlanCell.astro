@@ -10,16 +10,15 @@ interface Props {
   plannedCourses: PlanCourseDetail[];
   warningsByRow: Map<number, CourseWarning[]>;
   courseById: Map<number, Course>;
-  addableCourses: Course[];
 }
 
-const { planId, year, session, plannedCourses, warningsByRow, courseById, addableCourses } = Astro.props;
+const { planId, year, session, plannedCourses, warningsByRow, courseById } = Astro.props;
 
 const cellCourses = plannedCourses.filter((row) => row.year === year && row.session === session);
 const recommended = RECOMMENDED_COURSE_LOAD[session];
 ---
 
-<td>
+<td class="plan-cell" data-year={year} data-session={session}>
   {
     cellCourses.length > 0 && (
       <ul class="cell-courses">
@@ -56,21 +55,4 @@ const recommended = RECOMMENDED_COURSE_LOAD[session];
   <p class="load-hint">
     {cellCourses.length} of {recommended} typical
   </p>
-  {
-    addableCourses.length > 0 && (
-      <form method="post" action={`/api/plans/${planId}/courses`} class={cellCourses.length > 0 ? "add-course has-divider" : "add-course"}>
-        <input type="hidden" name="year" value={year} />
-        <input type="hidden" name="session" value={session} />
-        <select name="courseId" required aria-label={`Add a course to Year ${year}, ${SESSION_LABELS[session]}`}>
-          <option value="">Add a course…</option>
-          {addableCourses.map((course) => (
-            <option value={course.id}>
-              {course.code} — {course.title}
-            </option>
-          ))}
-        </select>
-        <button type="submit">Add</button>
-      </form>
-    )
-  }
 </td>
