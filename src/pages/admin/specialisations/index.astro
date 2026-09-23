@@ -1,0 +1,35 @@
+---
+import { listSpecialisations } from "../../../lib/queries";
+import "../../../styles.css";
+
+const all = listSpecialisations();
+---
+
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Specialisations — Admin</title>
+  </head>
+  <body>
+    <nav aria-label="site">
+      <a href="/">Degree planner</a>
+      <a href="/admin">Admin</a>
+    </nav>
+    <main>
+      <h1>Specialisations</h1>
+      <p><a href="/admin/specialisations/new">New specialisation</a> · <a href="/admin/degrees">Degrees</a></p>
+      <ul class="plan-list">
+        {all.map((s) => (
+          <li>
+            <a href={`/admin/specialisations/${s.id}`}>
+              {s.code} — {s.title}
+            </a>
+            {` (${s.kind}, ${s.degreeTitle})`}
+          </li>
+        ))}
+      </ul>
+    </main>
+  </body>
+</html>

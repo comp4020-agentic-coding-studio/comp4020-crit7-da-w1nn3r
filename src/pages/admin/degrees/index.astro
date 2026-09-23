@@ -1,0 +1,34 @@
+---
+import { listDegrees } from "../../../lib/queries";
+import "../../../styles.css";
+
+const allDegrees = listDegrees();
+---
+
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Degrees — Admin</title>
+  </head>
+  <body>
+    <nav aria-label="site">
+      <a href="/">Degree planner</a>
+      <a href="/admin">Admin</a>
+    </nav>
+    <main>
+      <h1>Degrees</h1>
+      <p><a href="/admin/degrees/new">New degree</a> · <a href="/admin/specialisations">Specialisations</a></p>
+      <ul class="plan-list">
+        {allDegrees.map((degree) => (
+          <li>
+            <a href={`/admin/degrees/${degree.id}`}>
+              {degree.code} — {degree.title}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </main>
+  </body>
+</html>

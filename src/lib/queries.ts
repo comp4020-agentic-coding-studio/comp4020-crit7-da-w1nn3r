@@ -3,10 +3,13 @@ import { db } from "./db";
 import {
   type Course,
   type Degree,
+  type DegreeRequirementSet,
   type Plan,
   type PlanCourse,
   type Session,
   type Specialisation,
+  type SpecialisationKind,
+  type SpecialisationRequirementSet,
   courses,
   degreeRequirementItems,
   degreeRequirementPoolCourses,
@@ -52,6 +55,24 @@ export function listSpecialisationsForDegree(degreeId: number): Specialisation[]
 
 export function getSpecialisation(id: number): Specialisation | undefined {
   return db.select().from(specialisations).where(eq(specialisations.id, id)).get();
+}
+
+export type SpecialisationSummary = Specialisation & { degreeTitle: string };
+
+export function listSpecialisations(): SpecialisationSummary[] {
+  return db
+    .select({
+      id: specialisations.id,
+      degreeId: specialisations.degreeId,
+      code: specialisations.code,
+      title: specialisations.title,
+      kind: specialisations.kind,
+      degreeTitle: degrees.title,
+    })
+    .from(specialisations)
+    .innerJoin(degrees, eq(specialisations.degreeId, degrees.id))
+    .orderBy(asc(specialisations.title))
+    .all();
 }
 
 export type PlanSummary = Plan & { degreeTitle: string; specialisationTitle: string | null };
@@ -258,4 +279,183 @@ export function addPrerequisiteGroup(courseId: number, optionCourseIds: number[]
 export function removePrerequisiteGroup(groupId: number): void {
   db.delete(prerequisiteGroupOptions).where(eq(prerequisiteGroupOptions.groupId, groupId)).run();
   db.delete(prerequisiteGroups).where(eq(prerequisiteGroups.id, groupId)).run();
+}
+
+// --- Admin: degrees, specialisations, and their year-keyed requirements --
+
+export function createDegree(values: { code: string; title: string }): Degree {
+  return db.insert(degrees).values(values).returning().get();
+}
+
+export function updateDegree(id: number, values: { code: string; title: string }): Degree | undefined {
+  return db.update(degrees).set(values).where(eq(degrees.id, id)).returning().get();
+}
+
+export function createSpecialisation(values: {
+  degreeId: number;
+  code: string;
+  title: string;
+  kind: SpecialisationKind;
+}): Specialisation {
+  return db.insert(specialisations).values(values).returning().get();
+}
+
+export function updateSpecialisation(
+  id: number,
+  values: { code: string; title: string; kind: SpecialisationKind },
+): Specialisation | undefined {
+  return db.update(specialisations).set(values).where(eq(specialisations.id, id)).returning().get();
+}
+
+export type RequirementItemDetail =
+  | { id: number; kind: "required"; courseId: number }
+  | { id: number; kind: "elective_pool"; poolLabel: string; poolMinCount: number; courseIds: number[] };
+
+export function listDegreeRequirementSets(degreeId: number): DegreeRequirementSet[] {
+  return db
+    .select()
+    .from(degreeRequirementSets)
+    .where(eq(degreeRequirementSets.degreeId, degreeId))
+    .orderBy(desc(degreeRequirementSets.year))
+    .all();
+}
+
+export function getDegreeRequirementSet(setId: number): DegreeRequirementSet | undefined {
+  return db.select().from(degreeRequirementSets).where(eq(degreeRequirementSets.id, setId)).get();
+}
+
+export function createDegreeRequirementSet(degreeId: number, year: number): DegreeRequirementSet {
+  return db.insert(degreeRequirementSets).values({ degreeId, year }).returning().get();
+}
+
+export function removeDegreeRequirementSet(setId: number): void {
+  const items = db
+    .select({ id: degreeRequirementItems.id })
+    .from(degreeRequirementItems)
+    .where(eq(degreeRequirementItems.requirementSetId, setId))
+    .all();
+  for (const item of items) removeDegreeRequirementItem(item.id);
+  db.delete(degreeRequirementSets).where(eq(degreeRequirementSets.id, setId)).run();
+}
+
+export function getDegreeRequirementSetItems(setId: number): RequirementItemDetail[] {
+  const items = db
+    .select()
+    .from(degreeRequirementItems)
+    .where(eq(degreeRequirementItems.requirementSetId, setId))
+    .all();
+  return items.map((item): RequirementItemDetail => {
+    if (item.kind === "required") {
+      return { id: item.id, kind: "required", courseId: item.courseId! };
+    }
+    const courseIds = db
+      .select({ courseId: degreeRequirementPoolCourses.courseId })
+      .from(degreeRequirementPoolCourses)
+      .where(eq(degreeRequirementPoolCourses.requirementItemId, item.id))
+      .all()
+      .map((row) => row.courseId);
+    return { id: item.id, kind: "elective_pool", poolLabel: item.poolLabel!, poolMinCount: item.poolMinCount!, courseIds };
+  });
+}
+
+export function addDegreeRequiredItem(setId: number, courseId: number): void {
+  db.insert(degreeRequirementItems).values({ requirementSetId: setId, kind: "required", courseId }).run();
+}
+
+export function addDegreeElectivePoolItem(
+  setId: number,
+  poolLabel: string,
+  poolMinCount: number,
+  courseIds: number[],
+): void {
+  const item = db
+    .insert(degreeRequirementItems)
+    .values({ requirementSetId: setId, kind: "elective_pool", poolLabel, poolMinCount })
+    .returning()
+    .get();
+  for (const courseId of courseIds) {
+    db.insert(degreeRequirementPoolCourses).values({ requirementItemId: item.id, courseId }).run();
+  }
+}
+
+export function removeDegreeRequirementItem(itemId: number): void {
+  db.delete(degreeRequirementPoolCourses).where(eq(degreeRequirementPoolCourses.requirementItemId, itemId)).run();
+  db.delete(degreeRequirementItems).where(eq(degreeRequirementItems.id, itemId)).run();
+}
+
+export function listSpecialisationRequirementSets(specialisationId: number): SpecialisationRequirementSet[] {
+  return db
+    .select()
+    .from(specialisationRequirementSets)
+    .where(eq(specialisationRequirementSets.specialisationId, specialisationId))
+    .orderBy(desc(specialisationRequirementSets.year))
+    .all();
+}
+
+export function getSpecialisationRequirementSet(setId: number): SpecialisationRequirementSet | undefined {
+  return db.select().from(specialisationRequirementSets).where(eq(specialisationRequirementSets.id, setId)).get();
+}
+
+export function createSpecialisationRequirementSet(
+  specialisationId: number,
+  year: number,
+): SpecialisationRequirementSet {
+  return db.insert(specialisationRequirementSets).values({ specialisationId, year }).returning().get();
+}
+
+export function removeSpecialisationRequirementSet(setId: number): void {
+  const items = db
+    .select({ id: specialisationRequirementItems.id })
+    .from(specialisationRequirementItems)
+    .where(eq(specialisationRequirementItems.requirementSetId, setId))
+    .all();
+  for (const item of items) removeSpecialisationRequirementItem(item.id);
+  db.delete(specialisationRequirementSets).where(eq(specialisationRequirementSets.id, setId)).run();
+}
+
+export function getSpecialisationRequirementSetItems(setId: number): RequirementItemDetail[] {
+  const items = db
+    .select()
+    .from(specialisationRequirementItems)
+    .where(eq(specialisationRequirementItems.requirementSetId, setId))
+    .all();
+  return items.map((item): RequirementItemDetail => {
+    if (item.kind === "required") {
+      return { id: item.id, kind: "required", courseId: item.courseId! };
+    }
+    const courseIds = db
+      .select({ courseId: specialisationRequirementPoolCourses.courseId })
+      .from(specialisationRequirementPoolCourses)
+      .where(eq(specialisationRequirementPoolCourses.requirementItemId, item.id))
+      .all()
+      .map((row) => row.courseId);
+    return { id: item.id, kind: "elective_pool", poolLabel: item.poolLabel!, poolMinCount: item.poolMinCount!, courseIds };
+  });
+}
+
+export function addSpecialisationRequiredItem(setId: number, courseId: number): void {
+  db.insert(specialisationRequirementItems).values({ requirementSetId: setId, kind: "required", courseId }).run();
+}
+
+export function addSpecialisationElectivePoolItem(
+  setId: number,
+  poolLabel: string,
+  poolMinCount: number,
+  courseIds: number[],
+): void {
+  const item = db
+    .insert(specialisationRequirementItems)
+    .values({ requirementSetId: setId, kind: "elective_pool", poolLabel, poolMinCount })
+    .returning()
+    .get();
+  for (const courseId of courseIds) {
+    db.insert(specialisationRequirementPoolCourses).values({ requirementItemId: item.id, courseId }).run();
+  }
+}
+
+export function removeSpecialisationRequirementItem(itemId: number): void {
+  db.delete(specialisationRequirementPoolCourses)
+    .where(eq(specialisationRequirementPoolCourses.requirementItemId, itemId))
+    .run();
+  db.delete(specialisationRequirementItems).where(eq(specialisationRequirementItems.id, itemId)).run();
 }

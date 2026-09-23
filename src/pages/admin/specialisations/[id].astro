@@ -1,0 +1,93 @@
+---
+import { getDegree, getSpecialisation, listSpecialisationRequirementSets } from "../../../lib/queries";
+import { SPECIALISATION_KINDS } from "../../../lib/schema";
+import "../../../styles.css";
+
+const id = Number(Astro.params.id);
+const specialisation = Number.isInteger(id) ? getSpecialisation(id) : undefined;
+if (!specialisation) {
+  return Astro.redirect("/admin/specialisations", 302);
+}
+const degree = getDegree(specialisation.degreeId);
+
+const sets = listSpecialisationRequirementSets(specialisation.id);
+
+const error = Astro.url.searchParams.get("error");
+const errorMessage =
+  error === "invalid"
+    ? "Check the fields."
+    : error === "duplicate-year"
+      ? "There's already a requirement set for that year."
+      : null;
+---
+
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{specialisation.code} — Admin</title>
+  </head>
+  <body>
+    <nav aria-label="site">
+      <a href="/">Degree planner</a>
+      <a href="/admin">Admin</a>
+      <a href="/admin/specialisations">Specialisations</a>
+    </nav>
+    <main>
+      <h1>Edit {specialisation.code}</h1>
+      <p>Belongs to {degree ? `${degree.code} — ${degree.title}` : "an unknown degree"}.</p>
+      {errorMessage && (
+        <p role="alert" class="notice">
+          {errorMessage}
+        </p>
+      )}
+      <form method="post" action={`/api/admin/specialisations/${specialisation.id}`} class="stack">
+        <label>
+          Code
+          <input type="text" name="code" required value={specialisation.code} />
+        </label>
+        <label>
+          Title
+          <input type="text" name="title" required value={specialisation.title} />
+        </label>
+        <label>
+          Kind
+          <select name="kind" required>
+            {SPECIALISATION_KINDS.map((kind) => (
+              <option value={kind} selected={kind === specialisation.kind}>
+                {kind}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button type="submit">Save changes</button>
+      </form>
+
+      <h2>Requirement sets by enrolment year</h2>
+      {sets.length === 0 && <p>No requirement sets yet.</p>}
+      <ul class="plan-list">
+        {sets.map((set) => (
+          <li>
+            <div class="cell-course-row">
+              <a href={`/admin/specialisations/${specialisation.id}/sets/${set.id}`}>Year {set.year}</a>
+              <form
+                method="post"
+                action={`/api/admin/specialisations/${specialisation.id}/requirement-sets/${set.id}`}
+              >
+                <button type="submit" aria-label={`Remove the Year ${set.year} requirement set`}>Remove</button>
+              </form>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <form method="post" action={`/api/admin/specialisations/${specialisation.id}/requirement-sets`} class="stack">
+        <label>
+          Add a requirement set for enrolment year
+          <input type="number" name="year" required min="2000" />
+        </label>
+        <button type="submit">Add year</button>
+      </form>
+    </main>
+  </body>
+</html>

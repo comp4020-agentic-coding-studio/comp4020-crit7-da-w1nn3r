@@ -1,0 +1,62 @@
+---
+import { listDegrees } from "../../../lib/queries";
+import { SPECIALISATION_KINDS } from "../../../lib/schema";
+import "../../../styles.css";
+
+const allDegrees = listDegrees();
+const error = Astro.url.searchParams.get("error");
+const errorMessage = error === "invalid" ? "Check the fields — code, title and a valid degree are required." : null;
+---
+
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>New specialisation — Admin</title>
+  </head>
+  <body>
+    <nav aria-label="site">
+      <a href="/">Degree planner</a>
+      <a href="/admin">Admin</a>
+      <a href="/admin/specialisations">Specialisations</a>
+    </nav>
+    <main>
+      <h1>New specialisation</h1>
+      {errorMessage && (
+        <p role="alert" class="notice">
+          {errorMessage}
+        </p>
+      )}
+      <form method="post" action="/api/admin/specialisations" class="stack">
+        <label>
+          Degree
+          <select name="degreeId" required>
+            {allDegrees.map((degree) => (
+              <option value={degree.id}>
+                {degree.code} — {degree.title}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Code
+          <input type="text" name="code" required placeholder="AI-MAJ" />
+        </label>
+        <label>
+          Title
+          <input type="text" name="title" required />
+        </label>
+        <label>
+          Kind
+          <select name="kind" required>
+            {SPECIALISATION_KINDS.map((kind) => (
+              <option value={kind}>{kind}</option>
+            ))}
+          </select>
+        </label>
+        <button type="submit">Create specialisation</button>
+      </form>
+    </main>
+  </body>
+</html>

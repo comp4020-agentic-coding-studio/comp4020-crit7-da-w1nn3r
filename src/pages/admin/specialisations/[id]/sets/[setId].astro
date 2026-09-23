@@ -1,0 +1,126 @@
+---
+import type { Course } from "../../../../../lib/schema";
+import type { RequirementItemDetail } from "../../../../../lib/queries";
+import {
+  getSpecialisation,
+  getSpecialisationRequirementSet,
+  getSpecialisationRequirementSetItems,
+  listCourses,
+} from "../../../../../lib/queries";
+import "../../../../../styles.css";
+
+const specialisationId = Number(Astro.params.id);
+const setId = Number(Astro.params.setId);
+const specialisation = Number.isInteger(specialisationId) ? getSpecialisation(specialisationId) : undefined;
+const set = Number.isInteger(setId) ? getSpecialisationRequirementSet(setId) : undefined;
+if (!specialisation || !set || set.specialisationId !== specialisation.id) {
+  return Astro.redirect("/admin/specialisations", 302);
+}
+
+const items = getSpecialisationRequirementSetItems(set.id);
+const allCourses = listCourses();
+const courseById = new Map(allCourses.map((c: Course) => [c.id, c]));
+
+const error = Astro.url.searchParams.get("error");
+const errorMessage = error === "invalid" ? "Check the fields for that requirement." : null;
+---
+
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{specialisation.code} Year {set.year} — Admin</title>
+  </head>
+  <body>
+    <nav aria-label="site">
+      <a href="/">Degree planner</a>
+      <a href="/admin">Admin</a>
+      <a href="/admin/specialisations">Specialisations</a>
+      <a href={`/admin/specialisations/${specialisation.id}`}>{specialisation.code}</a>
+    </nav>
+    <main>
+      <h1>{specialisation.code} — enrolment year {set.year}</h1>
+      {errorMessage && (
+        <p role="alert" class="notice">
+          {errorMessage}
+        </p>
+      )}
+
+      <h2>Requirements</h2>
+      {items.length === 0 && <p>No requirements yet.</p>}
+      <ul class="plan-list">
+        {items.map((item: RequirementItemDetail) => (
+          <li>
+            <div class="cell-course-row">
+              <span>
+                {item.kind === "required" ? (
+                  <>Required: {courseById.get(item.courseId)?.code}</>
+                ) : (
+                  <>
+                    Elective pool "{item.poolLabel}" (choose {item.poolMinCount}):{" "}
+                    {item.courseIds.map((courseId: number) => courseById.get(courseId)?.code).join(", ")}
+                  </>
+                )}
+              </span>
+              <form
+                method="post"
+                action={`/api/admin/specialisations/${specialisation.id}/requirement-sets/${set.id}/items/${item.id}`}
+              >
+                <button type="submit" aria-label={`Remove requirement ${item.id}`}>Remove</button>
+              </form>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <h3>Add a required course</h3>
+      <form
+        method="post"
+        action={`/api/admin/specialisations/${specialisation.id}/requirement-sets/${set.id}/items`}
+        class="stack"
+      >
+        <input type="hidden" name="kind" value="required" />
+        <label>
+          Course
+          <select name="courseId" required>
+            {allCourses.map((c: Course) => (
+              <option value={c.id}>
+                {c.code} — {c.title}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button type="submit">Add required course</button>
+      </form>
+
+      <h3>Add an elective pool</h3>
+      <form
+        method="post"
+        action={`/api/admin/specialisations/${specialisation.id}/requirement-sets/${set.id}/items`}
+        class="stack"
+      >
+        <input type="hidden" name="kind" value="elective_pool" />
+        <label>
+          Pool label
+          <input type="text" name="poolLabel" required placeholder="Specialisation electives" />
+        </label>
+        <label>
+          Minimum to choose
+          <input type="number" name="poolMinCount" required min="1" value="1" />
+        </label>
+        <label>
+          Candidate courses
+          <select name="courseIds" multiple required size={Math.min(8, Math.max(3, allCourses.length))}>
+            {allCourses.map((c: Course) => (
+              <option value={c.id}>
+                {c.code} — {c.title}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button type="submit">Add elective pool</button>
+      </form>
+    </main>
+  </body>
+</html>

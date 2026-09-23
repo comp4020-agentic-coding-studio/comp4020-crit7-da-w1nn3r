@@ -1,0 +1,78 @@
+---
+import { getDegree, listDegreeRequirementSets } from "../../../lib/queries";
+import "../../../styles.css";
+
+const id = Number(Astro.params.id);
+const degree = Number.isInteger(id) ? getDegree(id) : undefined;
+if (!degree) {
+  return Astro.redirect("/admin/degrees", 302);
+}
+
+const sets = listDegreeRequirementSets(degree.id);
+
+const error = Astro.url.searchParams.get("error");
+const errorMessage =
+  error === "invalid"
+    ? "Check the fields."
+    : error === "duplicate-year"
+      ? "There's already a requirement set for that year."
+      : null;
+---
+
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{degree.code} — Admin</title>
+  </head>
+  <body>
+    <nav aria-label="site">
+      <a href="/">Degree planner</a>
+      <a href="/admin">Admin</a>
+      <a href="/admin/degrees">Degrees</a>
+    </nav>
+    <main>
+      <h1>Edit {degree.code}</h1>
+      {errorMessage && (
+        <p role="alert" class="notice">
+          {errorMessage}
+        </p>
+      )}
+      <form method="post" action={`/api/admin/degrees/${degree.id}`} class="stack">
+        <label>
+          Code
+          <input type="text" name="code" required value={degree.code} />
+        </label>
+        <label>
+          Title
+          <input type="text" name="title" required value={degree.title} />
+        </label>
+        <button type="submit">Save changes</button>
+      </form>
+
+      <h2>Requirement sets by enrolment year</h2>
+      <p>What's compulsory or elective is locked in at the year a student enrols — each year gets its own set.</p>
+      {sets.length === 0 && <p>No requirement sets yet.</p>}
+      <ul class="plan-list">
+        {sets.map((set) => (
+          <li>
+            <div class="cell-course-row">
+              <a href={`/admin/degrees/${degree.id}/sets/${set.id}`}>Year {set.year}</a>
+              <form method="post" action={`/api/admin/degrees/${degree.id}/requirement-sets/${set.id}`}>
+                <button type="submit" aria-label={`Remove the Year ${set.year} requirement set`}>Remove</button>
+              </form>
+            </div>
+          </li>
+        ))}
+      </ul>
+      <form method="post" action={`/api/admin/degrees/${degree.id}/requirement-sets`} class="stack">
+        <label>
+          Add a requirement set for enrolment year
+          <input type="number" name="year" required min="2000" />
+        </label>
+        <button type="submit">Add year</button>
+      </form>
+    </main>
+  </body>
+</html>

@@ -1,0 +1,41 @@
+---
+import "../../../styles.css";
+
+const error = Astro.url.searchParams.get("error");
+const errorMessage = error === "invalid" ? "Code and title are required." : null;
+---
+
+<!doctype html>
+<html lang="en-AU">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>New degree — Admin</title>
+  </head>
+  <body>
+    <nav aria-label="site">
+      <a href="/">Degree planner</a>
+      <a href="/admin">Admin</a>
+      <a href="/admin/degrees">Degrees</a>
+    </nav>
+    <main>
+      <h1>New degree</h1>
+      {errorMessage && (
+        <p role="alert" class="notice">
+          {errorMessage}
+        </p>
+      )}
+      <form method="post" action="/api/admin/degrees" class="stack">
+        <label>
+          Code
+          <input type="text" name="code" required placeholder="BACS" />
+        </label>
+        <label>
+          Title
+          <input type="text" name="title" required />
+        </label>
+        <button type="submit">Create degree</button>
+      </form>
+    </main>
+  </body>
+</html>
